@@ -70,23 +70,25 @@ export default function App() {
 
   // ── Persistência ──
   useEffect(() => {
-    (async () => {
       try {
-        const r = await window.storage.get('bi_projects');
-        if (r?.value) {
-          const data = JSON.parse(r.value);
+      const savedData = localStorage.getItem('bi_projects');
+      if (savedData) {
+          const data = JSON.parse(savedData);
           if (Array.isArray(data) && data.length > 0) setProjects(data);
-        }
-      } catch {}
+      }
+      } catch (e) {
+      console.error("Erro ao carregar dados:", e);
+      }
       setReady(true);
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (!ready) return;
-    window.storage.set('bi_projects', JSON.stringify(projects)).catch(() => {});
+  }, []);  useEffect(() => {
+      if (!ready) return;
+      try {
+      localStorage.setItem('bi_projects', JSON.stringify(projects));
+      } catch (e) {
+      console.error("Erro ao salvar dados:", e);
+      }
   }, [projects, ready]);
-
+    
   // ── Score em tempo real ──
   const raw = calcScore(form.scores);
   const allFilled = Object.values(form.scores).every(v => v > 0);
