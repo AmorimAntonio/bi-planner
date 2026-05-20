@@ -1,4 +1,13 @@
 import { useState, useEffect } from "react";
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 const TEAM = ['Neto', 'Victor', 'Leandro', 'Emily'];
@@ -70,25 +79,23 @@ export default function App() {
 
   // ── Persistência ──
   useEffect(() => {
+    (async () => {
       try {
-      const savedData = localStorage.getItem('bi_projects');
-      if (savedData) {
-          const data = JSON.parse(savedData);
+        const r = localStorage.getItem('bi_projects');
+        if (r?.value) {
+          const data = JSON.parse(r.value);
           if (Array.isArray(data) && data.length > 0) setProjects(data);
-      }
-      } catch (e) {
-      console.error("Erro ao carregar dados:", e);
-      }
+        }
+      } catch {}
       setReady(true);
-  }, []);  useEffect(() => {
-      if (!ready) return;
-      try {
-      localStorage.setItem('bi_projects', JSON.stringify(projects));
-      } catch (e) {
-      console.error("Erro ao salvar dados:", e);
-      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    localStorage.setItem('bi_projects', JSON.stringify(projects));
   }, [projects, ready]);
-    
+
   // ── Score em tempo real ──
   const raw = calcScore(form.scores);
   const allFilled = Object.values(form.scores).every(v => v > 0);
