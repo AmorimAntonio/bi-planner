@@ -1,12 +1,594 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BI Planner</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BI Planner — Governance & Pipeline</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%236366f1'/><rect x='4' y='20' width='6' height='10' rx='2' fill='white' opacity='.6'/><rect x='13' y='12' width='6' height='18' rx='2' fill='white' opacity='.8'/><rect x='22' y='4' width='6' height='26' rx='2' fill='white'/></svg>"/>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet"/>
+<style>
+/* ── Reset & Base ────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Outfit',system-ui,sans-serif;background:#f1f5f9;color:#1e293b;font-size:13px;min-height:100vh}
+input,select,textarea{font-family:'Outfit',system-ui,sans-serif;font-size:13px;color:#1e293b;outline:none;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus{border-color:#a5b4fc!important;box-shadow:0 0 0 3px #eef2ff}
+button{font-family:'Outfit',system-ui,sans-serif;cursor:pointer;transition:all .15s}
+button:hover{opacity:.88}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+.mono{font-family:'JetBrains Mono',monospace}
+
+/* ── Layout classes ─────────────────────────────────────────── */
+.lbl{display:block;font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px;letter-spacing:.5px;text-transform:uppercase}
+.fi{width:100%;padding:8px 11px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;color:#1e293b;background:white}
+.card{background:white;border:1px solid #e2e8f0;border-radius:14px;padding:22px 24px}
+.section-title{font-size:13px;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:7px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+/* ── Header avatars ──────────────────────────────────────────── */
+.av{width:29px;height:29px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;border:2px solid white;margin-left:-5px;box-shadow:0 1px 3px rgba(0,0,0,.15);cursor:default;flex-shrink:0}
+
+/* ── Plan buttons ───────────────────────────────────────────── */
+.plan-btn{padding:9px 28px;border-radius:9px;border:2px solid #e2e8f0;background:white;color:#94a3b8;font-weight:700;font-size:15px;font-family:'JetBrains Mono',monospace}
+.plan-btn.active{border-color:#6366f1;background:#eef2ff;color:#6366f1}
+
+/* ── Score buttons ──────────────────────────────────────────── */
+.score-btn{flex:1;padding:11px 0;border-radius:9px;border:2px solid #e2e8f0;background:white;color:#c0cdd8;font-weight:700;font-size:16px;font-family:'JetBrains Mono',monospace;transition:all .12s}
+
+/* ── Kanban ─────────────────────────────────────────────────── */
+.kcard{background:white;border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:9px;transition:border-color .15s,box-shadow .15s}
+.kcard-hd{padding:12px 13px;cursor:pointer;user-select:none}
+.kcard-body{padding:12px 13px;border-top:1px solid #f1f5f9;background:#fafbff;display:none}
+.kcard.open .kcard-body{display:block}
+.kcard.open{border-color:#c7d2fe;box-shadow:0 2px 12px rgba(99,102,241,.1)}
+.ssel{width:100%;margin-top:5px;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;background:white;color:#1e293b;font-family:'Outfit',system-ui,sans-serif}
+.rm-btn{margin-top:12px;width:100%;padding:7px;border-radius:8px;border:1px solid #fecaca;background:white;color:#dc2626;font-size:12px;font-weight:700}
+
+/* ── Sync status ────────────────────────────────────────────── */
+.sync-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;transition:background .3s}
+.sync-dot.ok{background:#10b981}
+.sync-dot.loading{background:#f59e0b;animation:pulse 1s infinite}
+.sync-dot.error{background:#ef4444}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── Spinner ────────────────────────────────────────────────── */
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid #e2e8f0;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Tab buttons ────────────────────────────────────────────── */
+.tab-btn{padding:6px 15px;border-radius:8px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',system-ui,sans-serif;transition:all .15s}
+.tab-btn.active{background:white;color:#6366f1;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.tab-btn.inactive{background:transparent;color:#64748b}
+</style>
+</head>
+<body>
+
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwtwjU5G1YsueK7TXZ7BHVk22Bri7CRQvxxwZvRJeg1Pl-LpM-tMGFGzQRIgHSXk3J_/exec';
+</script>
+
+<!-- TOAST -->
+<div id="toast" style="position:fixed;top:14px;right:14px;z-index:9999;display:none;padding:10px 18px;border-radius:10px;color:white;font-size:13px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.2);align-items:center;gap:8px;max-width:300px"></div>
+
+<!-- ═══════════════ HEADER ════════════════ -->
+<header style="background:white;border-bottom:1px solid #e2e8f0;padding:0 20px;height:54px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+  <div style="display:flex;align-items:center;gap:9px;flex-shrink:0">
+    <div style="width:34px;height:34px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:9px;display:flex;align-items:center;justify-content:center">
+      <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+        <rect x="1"  y="10" width="3.5" height="6"  rx="1" fill="white" opacity=".6"/>
+        <rect x="6.5" y="6" width="3.5" height="10" rx="1" fill="white" opacity=".8"/>
+        <rect x="12" y="1" width="3.5" height="15" rx="1" fill="white"/>
+      </svg>
+    </div>
+    <div>
+      <div style="font-size:15px;font-weight:800;letter-spacing:-.3px;line-height:1">BI Planner</div>
+      <div class="mono" style="font-size:8px;color:#94a3b8;letter-spacing:1px">GOVERNANCE & PIPELINE</div>
+    </div>
+  </div>
+
+  <div style="display:flex;background:#f1f5f9;padding:3px;border-radius:10px;gap:2px">
+    <button id="btn-form"     class="tab-btn active"   onclick="showTab('form')">＋ Nova Estimativa</button>
+    <button id="btn-pipeline" class="tab-btn inactive" onclick="showTab('pipeline')">⊞ Pipeline</button>
+  </div>
+
+  <!-- Sync indicator -->
+  <div id="sync-badge" style="display:flex;align-items:center;gap:6px;padding:5px 11px;border-radius:20px;background:#f8fafc;border:1px solid #e2e8f0">
+    <div id="sync-dot" class="sync-dot ok"></div>
+    <span id="sync-label" class="mono" style="font-size:10px;color:#64748b;font-weight:700">SINCRONIZADO</span>
+  </div>
+
+  <button onclick="manualSync()" title="Atualizar dados" style="padding:6px 9px;border-radius:8px;border:1px solid #e2e8f0;background:white;color:#64748b;font-size:15px;display:flex;align-items:center">↻</button>
+
+  <div style="margin-left:auto;display:flex;align-items:center;gap:2px">
+    <span style="font-size:10px;color:#94a3b8;margin-right:6px;font-weight:600">EQUIPE</span>
+    <div class="av" title="Neto"    style="background:#6366f1">N</div>
+    <div class="av" title="Victor"  style="background:#8b5cf6">V</div>
+    <div class="av" title="Leandro" style="background:#0891b2">L</div>
+    <div class="av" title="Emily"   style="background:#059669">E</div>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════
+     TAB 1 — NOVA ESTIMATIVA
+═══════════════════════════════════════════ -->
+<div id="tab-form" style="max-width:820px;margin:0 auto;padding:24px 16px 60px">
+
+  <!-- PARTE A -->
+  <div class="card" style="margin-bottom:12px">
+    <div class="section-title">📋 Informações do Projeto</div>
+    <div class="grid2">
+      <div><label class="lbl">Nome do Dashboard *</label><input id="f-name" class="fi" type="text" placeholder="Ex: Dashboard Comercial Q3"/></div>
+      <div><label class="lbl">Cliente / Empresa *</label><input id="f-client" class="fi" type="text" placeholder="Ex: Acme Corp"/></div>
+      <div><label class="lbl">Nome do Solicitante</label><input id="f-reqname" class="fi" type="text" placeholder="Nome completo"/></div>
+      <div><label class="lbl">E-mail do Solicitante</label><input id="f-email" class="fi" type="email" placeholder="email@empresa.com"/></div>
+      <div><label class="lbl">Data de Entrega Alvo</label><input id="f-date" class="fi" type="date"/></div>
+      <div><label class="lbl">Tabelas Fonte / Origem dos Dados</label><input id="f-source" class="fi" type="text" placeholder="Ex: CRM, SAP FI, WMS, Excel"/></div>
+    </div>
+    <div style="margin-top:16px">
+      <label class="lbl">Plano de Referência</label>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button id="plan-F4" class="plan-btn active" onclick="setPlan('F4')">F4</button>
+        <button id="plan-F8" class="plan-btn"        onclick="setPlan('F8')">F8</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PARTE B -->
+  <div class="card" style="margin-bottom:12px">
+    <div class="section-title">🎯 Avaliação Técnica</div>
+    <div id="criteria-list" style="display:flex;flex-direction:column;gap:20px"></div>
+  </div>
+
+  <!-- PARTE C: Resultado -->
+  <div id="score-area" style="margin-bottom:12px"></div>
+
+  <!-- SALVAR -->
+  <button id="save-btn" onclick="saveProject()" disabled
+    style="width:100%;padding:15px;border-radius:12px;border:none;background:#e2e8f0;color:#94a3b8;font-size:15px;font-weight:700;cursor:not-allowed">
+    💾 Salvar Projeto no Pipeline
+  </button>
+  <p id="save-hint" style="text-align:center;font-size:11px;color:#94a3b8;margin-top:7px">Preencha o nome, cliente e todos os 7 critérios.</p>
+</div>
+
+<!-- ══════════════════════════════════════
+     TAB 2 — PIPELINE KANBAN
+═══════════════════════════════════════════ -->
+<div id="tab-pipeline" style="display:none;padding:22px 16px 60px">
+  <div id="counters" style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap"></div>
+  <div id="kanban" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:start"></div>
+</div>
+
+<!-- ══════════════════════════════════════
+     LOADING OVERLAY
+═══════════════════════════════════════════ -->
+<div id="loading-overlay" style="position:fixed;inset:0;background:rgba(241,245,249,.92);z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+  <div style="width:34px;height:34px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:9px;display:flex;align-items:center;justify-content:center">
+    <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+      <rect x="1" y="10" width="3.5" height="6" rx="1" fill="white" opacity=".6"/>
+      <rect x="6.5" y="6" width="3.5" height="10" rx="1" fill="white" opacity=".8"/>
+      <rect x="12" y="1" width="3.5" height="15" rx="1" fill="white"/>
+    </svg>
+  </div>
+  <div class="spinner"></div>
+  <div style="font-size:13px;font-weight:600;color:#64748b">Carregando projetos...</div>
+</div>
+
+<!-- ══════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════ -->
+<script>
+// ─── Constantes ────────────────────────────────────────────────────────────
+const CRITERIA = [
+  {key:'volume',     label:'Volume de Dados',               w:.20, d1:'Poucas linhas/tabelas',           d5:'Milhões de linhas/muitas tabelas'},
+  {key:'transform',  label:'Complexidade de Transformação', w:.20, d1:'Carga simples',                   d5:'Transformações pesadas, merges, regras'},
+  {key:'frequency',  label:'Frequência de Atualização',     w:.15, d1:'Semanal / Mensal',                d5:'Diária ou intra-day'},
+  {key:'dax',        label:'Complexidade DAX & Modelagem',  w:.15, d1:'Medidas simples',                 d5:'Cálculos pesados, alta cardinalidade'},
+  {key:'audience',   label:'Audiência Esperada',            w:.10, d1:'1 a 3 usuários',                  d5:'Grande audiência / clientes externos'},
+  {key:'rls',        label:'RLS & Segurança',               w:.10, d1:'Sem RLS',                         d5:'RLS por usuário, cliente ou filial'},
+  {key:'criticality',label:'Criticidade Operacional',       w:.10, d1:'Consulta ocasional',              d5:'Core ops · C-Level / Diretoria'},
+];
+
+const TIERS = [
+  {label:'Muito Pequeno',  min:1.0, color:'#15803d', light:'#f0fdf4', border:'#bbf7d0', f4:'R$ 35 a R$ 105',       f8:'R$ 67 a R$ 201'},
+  {label:'Pequeno',        min:2.0, color:'#1d4ed8', light:'#eff6ff', border:'#bfdbfe', f4:'R$ 105 a R$ 175',      f8:'R$ 201 a R$ 335'},
+  {label:'Médio',          min:3.0, color:'#b45309', light:'#fffbeb', border:'#fde68a', f4:'R$ 210 a R$ 350',      f8:'R$ 402 a R$ 670'},
+  {label:'Grande',         min:3.8, color:'#c2410c', light:'#fff7ed', border:'#fed7aa', f4:'R$ 385 a R$ 700',      f8:'R$ 737 a R$ 1.340'},
+  {label:'Crítico/Pesado', min:4.5, color:'#b91c1c', light:'#fff1f2', border:'#fecdd3', f4:'R$ 735 a R$ 1.225+',  f8:'R$ 1.407 a R$ 2.345+'},
+];
+
+const SCOL     = ['#16a34a','#65a30d','#ca8a04','#ea580c','#dc2626'];
+const STATUSES = ['Pendente','Em Desenvolvimento','Concluído'];
+const SDOT     = {'Pendente':'#f59e0b','Em Desenvolvimento':'#3b82f6','Concluído':'#10b981'};
+const SBG      = {'Pendente':'#fef3c7','Em Desenvolvimento':'#dbeafe','Concluído':'#d1fae5'};
+const SBD      = {'Pendente':'#fcd34d','Em Desenvolvimento':'#93c5fd','Concluído':'#6ee7b7'};
+const STX      = {'Pendente':'#92400e','Em Desenvolvimento':'#1e40af','Concluído':'#065f46'};
+const TEAM     = ['Neto','Victor','Leandro','Emily'];
+
+// ─── Estado ────────────────────────────────────────────────────────────────
+let scores   = {volume:0, transform:0, frequency:0, dax:0, audience:0, rls:0, criticality:0};
+let plan     = 'F4';
+let projects = [];
+let expanded = null;
+const isConfigured = SCRIPT_URL && SCRIPT_URL !== 'COLE_SUA_URL_DO_APPS_SCRIPT_AQUI';
+
+// ─── Sync UI ───────────────────────────────────────────────────────────────
+function setSyncState(state, text) {
+  const dot   = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-label');
+  dot.className   = 'sync-dot ' + state;
+  label.textContent = text;
+}
+
+// ─── API Layer ─────────────────────────────────────────────────────────────
+async function apiFetch(payload) {
+  if (!isConfigured) return { success: true, offline: true };
+  setSyncState('loading', 'SINCRONIZANDO…');
+  try {
+    const r = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+      redirect: 'follow',
+    });
+    const data = await r.json();
+    setSyncState('ok', 'SINCRONIZADO');
+    return data;
+  } catch(e) {
+    setSyncState('error', 'ERRO DE SYNC');
+    toast('Erro ao sincronizar com Google Sheets.', false);
+    return { error: e.message };
+  }
+}
+
+async function apiGet() {
+  if (!isConfigured) return null;
+  setSyncState('loading', 'CARREGANDO…');
+  try {
+    const r    = await fetch(SCRIPT_URL, { redirect: 'follow' });
+    const data = await r.json();
+    setSyncState('ok', 'SINCRONIZADO');
+    return Array.isArray(data) ? data : null;
+  } catch(e) {
+    setSyncState('error', 'SEM CONEXÃO');
+    return null;
+  }
+}
+
+// ─── Inicialização ─────────────────────────────────────────────────────────
+async function init() {
+  buildCriteria();
+  updateScorePanel();
+
+  if (isConfigured) {
+    const remote = await apiGet();
+    if (remote && remote.length > 0) {
+      projects = remote;
+    } else if (!remote) {
+      // fallback: sem conexão — dados de demonstração
+      projects = getDemoProjects();
+    }
+  } else {
+    setSyncState('error', 'NÃO CONFIGURADO');
+    projects = getDemoProjects();
+    toast('Configure o SCRIPT_URL no index.html para habilitar o sync.', false);
+  }
+
+  document.getElementById('loading-overlay').style.display = 'none';
+  renderPipeline();
+}
+
+async function manualSync() {
+  if (!isConfigured) { toast('SCRIPT_URL não configurado.', false); return; }
+  const remote = await apiGet();
+  if (remote) { projects = remote; renderPipeline(); toast('Dados atualizados!'); }
+}
+
+function getDemoProjects() {
+  return [
+    {id:'1',name:'Dashboard Comercial',client:'Acme Corp',reqname:'João Silva',email:'joao@acme.com',date:'2025-07-15',source:'CRM, ERP',plan:'F4',scores:{volume:4,transform:3,frequency:4,dax:3,audience:3,rls:2,criticality:4},finalScore:3.35,status:'Em Desenvolvimento',assignee:'Victor',createdAt:'2025-05-01'},
+    {id:'2',name:'KPIs Financeiros',client:'Beta Ltda',reqname:'Maria Costa',email:'maria@beta.com',date:'2025-08-01',source:'SAP FI, Oracle',plan:'F8',scores:{volume:5,transform:5,frequency:3,dax:5,audience:4,rls:4,criticality:5},finalScore:4.55,status:'Pendente',assignee:'Neto',createdAt:'2025-05-03'},
+    {id:'3',name:'Relatório de Estoque',client:'Gamma SA',reqname:'Carlos Mendes',email:'carlos@gamma.com',date:'2025-06-30',source:'WMS',plan:'F4',scores:{volume:2,transform:2,frequency:2,dax:1,audience:1,rls:1,criticality:2},finalScore:1.75,status:'Concluído',assignee:'Emily',createdAt:'2025-04-20'},
+    {id:'4',name:'Análise de Vendas Regional',client:'Delta Corp',reqname:'Ana Ferreira',email:'ana@delta.com',date:'2025-07-20',source:'SQL Server, Excel',plan:'F4',scores:{volume:3,transform:4,frequency:3,dax:4,audience:3,rls:3,criticality:3},finalScore:3.35,status:'Pendente',assignee:null,createdAt:'2025-05-10'},
+  ];
+}
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
+function getTier(s) {
+  for (let i = TIERS.length-1; i >= 0; i--)
+    if (s >= TIERS[i].min) return TIERS[i];
+  return null;
+}
+
+function calcScore() {
+  return scores.volume*.20 + scores.transform*.20 + scores.frequency*.15
+       + scores.dax*.15    + scores.audience*.10  + scores.rls*.10 + scores.criticality*.10;
+}
+
+function toast(msg, ok=true) {
+  const t = document.getElementById('toast');
+  t.innerHTML = (ok ? '✓ ' : '⚠ ') + msg;
+  t.style.background = ok ? '#16a34a' : '#dc2626';
+  t.style.display = 'flex';
+  setTimeout(() => t.style.display='none', 2800);
+}
+
+// ─── Tabs ──────────────────────────────────────────────────────────────────
+function showTab(t) {
+  document.getElementById('tab-form').style.display     = t==='form'     ? 'block' : 'none';
+  document.getElementById('tab-pipeline').style.display = t==='pipeline' ? 'block' : 'none';
+  document.getElementById('btn-form').className     = 'tab-btn ' + (t==='form'     ? 'active' : 'inactive');
+  document.getElementById('btn-pipeline').className = 'tab-btn ' + (t==='pipeline' ? 'active' : 'inactive');
+  if (t === 'pipeline') renderPipeline();
+}
+
+// ─── Plano ─────────────────────────────────────────────────────────────────
+function setPlan(p) {
+  plan = p;
+  document.getElementById('plan-F4').className = 'plan-btn' + (p==='F4' ? ' active' : '');
+  document.getElementById('plan-F8').className = 'plan-btn' + (p==='F8' ? ' active' : '');
+  updateScorePanel();
+}
+
+// ─── Critérios ─────────────────────────────────────────────────────────────
+function buildCriteria() {
+  const el = document.getElementById('criteria-list');
+  CRITERIA.forEach(c => {
+    const row = document.createElement('div');
+    row.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;gap:12px">
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <span style="font-size:13px;font-weight:700">${c.label}</span>
+          <span class="mono" style="font-size:10px;color:#6366f1;background:#eef2ff;padding:1px 6px;border-radius:4px;font-weight:700">×${c.w.toFixed(2)}</span>
+        </div>
+        <span style="font-size:10px;color:#94a3b8;text-align:right;flex:1">1 → ${c.d1} &nbsp;·&nbsp; 5 → ${c.d5}</span>
+      </div>
+      <div style="display:flex;gap:7px" id="btns-${c.key}"></div>`;
+    el.appendChild(row);
+    const btns = document.getElementById('btns-'+c.key);
+    [1,2,3,4,5].forEach(v => {
+      const b = document.createElement('button');
+      b.className = 'score-btn';
+      b.textContent = v;
+      b.onclick = () => setScore(c.key, v);
+      btns.appendChild(b);
+    });
+  });
+}
+
+function setScore(key, v) {
+  scores[key] = v;
+  const btns = document.getElementById('btns-'+key).children;
+  for (let i=0; i<5; i++) {
+    const act = i+1 === v;
+    const col = SCOL[i];
+    btns[i].style.border     = `2px solid ${act ? col+'aa' : '#e2e8f0'}`;
+    btns[i].style.background = act ? col+'1a' : 'white';
+    btns[i].style.color      = act ? col : '#c0cdd8';
+    btns[i].style.transform  = act ? 'translateY(-1px)' : 'none';
+    btns[i].style.boxShadow  = act ? `0 2px 8px ${col}33` : 'none';
+  }
+  updateScorePanel();
+}
+
+function updateScorePanel() {
+  const all  = Object.values(scores).every(v => v > 0);
+  const raw  = calcScore();
+  const tier = all ? getTier(raw) : null;
+  const area = document.getElementById('score-area');
+
+  if (!all) {
+    area.style.gridTemplateColumns = '1fr';
+    area.innerHTML = `<div class="card">
+      <div class="lbl" style="margin-bottom:8px">Score Técnico Ponderado</div>
+      <div class="mono" style="font-size:52px;font-weight:800;color:#cbd5e1;line-height:1">—</div>
+      <div style="margin-top:12px;height:6px;background:#e2e8f0;border-radius:3px"></div>
+      <div style="margin-top:6px;font-size:11px;color:#94a3b8">Avalie todos os 7 critérios para ver o resultado.</div>
+    </div>`;
+    setSaveBtn(false); return;
+  }
+
+  area.style.display = 'grid';
+  area.style.gridTemplateColumns = '1fr 1fr';
+  area.style.gap = '12px';
+  area.innerHTML = `
+    <div style="background:${tier.light};border:1.5px solid ${tier.border};border-radius:14px;padding:20px 24px">
+      <div class="lbl" style="margin-bottom:8px">Score Técnico Ponderado</div>
+      <div class="mono" style="font-size:52px;font-weight:800;color:${tier.color};line-height:1">${raw.toFixed(2)}</div>
+      <div style="margin-top:12px;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden">
+        <div style="width:${(raw/5)*100}%;height:100%;background:${tier.color};border-radius:3px;transition:width .35s ease"></div>
+      </div>
+      <div style="margin-top:6px;font-size:11px;color:#94a3b8">de 5,00 pontos máximos</div>
+    </div>
+    <div style="background:${tier.light};border:1.5px solid ${tier.border};border-radius:14px;padding:20px 24px;display:flex;flex-direction:column;justify-content:space-between">
+      <div>
+        <div class="lbl" style="margin-bottom:8px">Porte do Projeto</div>
+        <div style="font-size:28px;font-weight:800;color:${tier.color}">${tier.label}</div>
+      </div>
+      <div style="background:rgba(255,255,255,.7);border-radius:10px;padding:12px 14px;margin-top:12px">
+        <div class="mono" style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:.8px;margin-bottom:4px">PLANO ${plan} · ESTIMATIVA/MÊS</div>
+        <div class="mono" style="font-size:20px;font-weight:800;color:#1e293b">${plan==='F4' ? tier.f4 : tier.f8}</div>
+      </div>
+    </div>`;
+
+  const ok = document.getElementById('f-name').value.trim() && document.getElementById('f-client').value.trim();
+  setSaveBtn(!!ok);
+}
+
+document.getElementById('f-name').oninput =
+document.getElementById('f-client').oninput = updateScorePanel;
+
+function setSaveBtn(ok) {
+  const b = document.getElementById('save-btn');
+  const h = document.getElementById('save-hint');
+  if (ok) {
+    b.style.cssText = 'width:100%;padding:15px;border-radius:12px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;font-size:15px;font-weight:700;cursor:pointer;font-family:Outfit,system-ui,sans-serif;box-shadow:0 4px 20px rgba(99,102,241,.35)';
+    b.disabled = false; h.style.display = 'none';
+  } else {
+    b.style.cssText = 'width:100%;padding:15px;border-radius:12px;border:none;background:#e2e8f0;color:#94a3b8;font-size:15px;font-weight:700;cursor:not-allowed;font-family:Outfit,system-ui,sans-serif';
+    b.disabled = true; h.style.display = 'block';
+  }
+}
+
+// ─── Salvar projeto ────────────────────────────────────────────────────────
+async function saveProject() {
+  const name   = document.getElementById('f-name').value.trim();
+  const client = document.getElementById('f-client').value.trim();
+  if (!name || !client || !Object.values(scores).every(v => v>0)) return;
+
+  const raw = calcScore();
+  const p = {
+    id:         Date.now().toString(),
+    name, client,
+    reqname:    document.getElementById('f-reqname').value.trim(),
+    email:      document.getElementById('f-email').value.trim(),
+    date:       document.getElementById('f-date').value,
+    source:     document.getElementById('f-source').value.trim(),
+    plan,
+    scores:     {...scores},
+    finalScore: parseFloat(raw.toFixed(2)),
+    status:     'Pendente',
+    assignee:   null,
+    createdAt:  new Date().toISOString().split('T')[0],
+  };
+
+  projects.unshift(p);
+  await apiFetch({ action: 'save', project: p });
+
+  // Reset formulário
+  ['f-name','f-client','f-reqname','f-email','f-date','f-source'].forEach(id => document.getElementById(id).value='');
+  scores = {volume:0, transform:0, frequency:0, dax:0, audience:0, rls:0, criticality:0};
+  CRITERIA.forEach(c => {
+    const btns = document.getElementById('btns-'+c.key).children;
+    for (let i=0;i<5;i++) { btns[i].style.border='2px solid #e2e8f0'; btns[i].style.background='white'; btns[i].style.color='#c0cdd8'; btns[i].style.transform='none'; btns[i].style.boxShadow='none'; }
+  });
+  updateScorePanel();
+  toast('Projeto salvo no pipeline!');
+  setTimeout(() => showTab('pipeline'), 600);
+}
+
+// ─── Pipeline / Kanban ────────────────────────────────────────────────────
+function renderPipeline() {
+  // Contadores
+  const ctr = document.getElementById('counters');
+  ctr.innerHTML = '';
+  [[null,'Total',projects.length], ...STATUSES.map(s => [s, s, projects.filter(p=>p.status===s).length])].forEach(([s,label,count]) => {
+    const d = document.createElement('div');
+    d.style.cssText = `flex:1;min-width:120px;background:white;border:1px solid ${s?SBD[s]:'#e2e8f0'};border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:8px`;
+    d.innerHTML = (s ? `<div style="width:8px;height:8px;border-radius:50%;background:${SDOT[s]};flex-shrink:0"></div>` : '')
+      + `<span style="font-size:11px;color:#64748b;font-weight:600">${label}</span>`
+      + `<span class="mono" style="margin-left:auto;font-size:22px;font-weight:800;color:${s?SDOT[s]:'#6366f1'}">${count}</span>`;
+    ctr.appendChild(d);
+  });
+
+  // Colunas kanban
+  const board = document.getElementById('kanban');
+  board.innerHTML = '';
+  STATUSES.forEach(status => {
+    const cards = projects.filter(p => p.status===status).sort((a,b) => b.finalScore - a.finalScore);
+    const col   = document.createElement('div');
+    col.style.cssText = 'background:#e8eef5;border:1px solid #dde4ed;border-radius:14px;padding:12px';
+    col.innerHTML = `
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #d1dae5">
+        <div style="width:9px;height:9px;border-radius:50%;background:${SDOT[status]};flex-shrink:0"></div>
+        <span style="font-size:11px;font-weight:800;color:${SDOT[status]};flex:1;letter-spacing:.4px">${status.toUpperCase()}</span>
+        <span style="font-size:11px;background:${SBG[status]};color:${STX[status]};padding:2px 9px;border-radius:20px;font-weight:700;border:1px solid ${SBD[status]}">${cards.length}</span>
+      </div>
+      <div id="col-${colId(status)}"></div>
+      ${cards.length===0 ? '<div style="text-align:center;padding:32px 0;color:#b0bbc9;font-size:12px">Nenhum projeto aqui</div>' : ''}`;
+    board.appendChild(col);
+    const slot = col.querySelector('#col-'+colId(status));
+    cards.forEach(p => slot.appendChild(buildCard(p)));
+  });
+}
+
+function colId(s) { return s.replace(/ /g,'_'); }
+
+function buildCard(p) {
+  const tier = getTier(p.finalScore);
+  const wrap = document.createElement('div');
+  wrap.className = 'kcard';
+  wrap.id = 'kcard-'+p.id;
+
+  // Cabeçalho
+  const hd = document.createElement('div');
+  hd.className = 'kcard-hd';
+  hd.onclick = () => toggleCard(p.id);
+  hd.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px">
+      <div style="font-size:13px;font-weight:700;color:#1e293b;line-height:1.35;flex:1">${p.name}</div>
+      ${tier ? `<div class="mono" style="font-size:12px;font-weight:700;color:${tier.color};background:${tier.light};padding:2px 7px;border-radius:6px;white-space:nowrap;border:1px solid ${tier.border}">${p.finalScore.toFixed(2)}</div>` : ''}
+    </div>
+    <div style="font-size:11px;color:#64748b;margin-bottom:9px">${p.client}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">
+      ${tier ? `<span style="font-size:10px;color:${tier.color};background:${tier.light};padding:2px 7px;border-radius:4px;font-weight:600;border:1px solid ${tier.border}">${tier.label}</span>` : ''}
+      <span class="mono" style="font-size:10px;color:#6366f1;background:#eef2ff;padding:2px 7px;border-radius:4px;font-weight:700">${p.plan}</span>
+      ${p.assignee ? `<span style="font-size:10px;color:#7c3aed;background:#f5f3ff;padding:2px 7px;border-radius:4px;font-weight:600">@${p.assignee}</span>` : ''}
+      ${p.date ? `<span style="font-size:10px;color:#94a3b8;margin-left:auto">📅 ${p.date}</span>` : ''}
+    </div>`;
+
+  // Corpo expandido
+  const body = document.createElement('div');
+  body.className = 'kcard-body';
+
+  const teamOpts   = `<option value="">Não atribuído</option>${TEAM.map(m => `<option value="${m}"${p.assignee===m?' selected':''}>${m}</option>`).join('')}`;
+  const statusOpts = STATUSES.map(s => `<option value="${s}"${p.status===s?' selected':''}>${s}</option>`).join('');
+  const bdHTML     = CRITERIA.map(c => {
+    const v = p.scores[c.key]||0;
+    return `<div style="background:white;border:1px solid #e2e8f0;border-radius:7px;padding:6px 4px;text-align:center">
+      <div style="font-size:8px;color:#94a3b8;line-height:1.3;margin-bottom:2px">${c.label.split(' ').slice(0,2).join(' ')}</div>
+      <div class="mono" style="font-size:14px;font-weight:800;color:${v ? SCOL[v-1] : '#e2e8f0'}">${v||'—'}</div>
+    </div>`;
+  }).join('');
+
+  body.innerHTML = (tier ? `
+    <div style="background:${tier.light};border:1px solid ${tier.border};border-radius:9px;padding:10px 12px;margin-bottom:12px">
+      <div class="mono" style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:.8px;margin-bottom:3px">CUSTO ESTIMADO — PLANO ${p.plan}/MÊS</div>
+      <div class="mono" style="font-size:15px;font-weight:800;color:${tier.color}">${p.plan==='F4'?tier.f4:tier.f8}</div>
+    </div>` : '') +
+    `<label class="lbl">Responsável</label>
+    <select class="ssel" onchange="updateProject('${p.id}','assignee',this.value||null)">${teamOpts}</select>
+    <label class="lbl" style="margin-top:10px">Status</label>
+    <select class="ssel" onchange="updateProject('${p.id}','status',this.value)">${statusOpts}</select>
+    <div style="margin-top:12px">
+      <div class="mono" style="font-size:9px;font-weight:700;color:#94a3b8;letter-spacing:.8px;margin-bottom:6px">BREAKDOWN DO SCORE</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">${bdHTML}</div>
+    </div>` +
+    (p.source  ? `<div style="margin-top:6px;font-size:11px;color:#64748b;padding:6px 8px;background:white;border-radius:7px;border:1px solid #e2e8f0"><span style="font-weight:700;color:#475569">Fontes: </span>${p.source}</div>` : '') +
+    (p.reqname ? `<div style="margin-top:6px;font-size:11px;color:#64748b;padding:6px 8px;background:white;border-radius:7px;border:1px solid #e2e8f0"><span style="font-weight:700;color:#475569">Solicitante: </span>${p.reqname}${p.email?' · '+p.email:''}</div>` : '') +
+    `<button class="rm-btn" onclick="removeProject('${p.id}')">Remover projeto</button>`;
+
+  wrap.appendChild(hd);
+  wrap.appendChild(body);
+  return wrap;
+}
+
+function toggleCard(id) {
+  const c = document.getElementById('kcard-'+id);
+  if (!c) return;
+  const wasOpen = c.classList.contains('open');
+  document.querySelectorAll('.kcard.open').forEach(el => el.classList.remove('open'));
+  if (!wasOpen) c.classList.add('open');
+}
+
+async function updateProject(id, field, val) {
+  const idx = projects.findIndex(p => p.id===id);
+  if (idx < 0) return;
+  projects[idx][field] = val;
+  renderPipeline();
+  await apiFetch({ action:'update', id, field, value: val });
+}
+
+async function removeProject(id) {
+  projects = projects.filter(p => p.id!==id);
+  expanded = null;
+  renderPipeline();
+  await apiFetch({ action:'delete', id });
+  toast('Projeto removido.', false);
+}
+
+// ─── Start ─────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
 </html>
